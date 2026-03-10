@@ -166,6 +166,7 @@ export default class SidenotePlugin extends Plugin {
 
 	// Track which footnote is being edited (by footnote ID)
 	private activeFootnoteEdit: string | null = null;
+	private layoutTrailingTimer: number | null = null;
 
 	async onload() {
 		await this.loadSettings();
@@ -515,7 +516,8 @@ export default class SidenotePlugin extends Plugin {
 				this.invalidateLayoutCache();
 				this.needsReadingModeRefresh = true;
 				this.scanDocumentForSidenotes();
-				this.rebindAndSchedule();
+				this.rebind();
+				this.scheduleLayoutStable();
 			}),
 		);
 
@@ -1439,24 +1441,15 @@ export default class SidenotePlugin extends Plugin {
 				);
 			}
 		} else {
-			refLine = root.querySelector<HTMLElement>(".cm-line");
+			refLine = this.findStableCmRefLine(root);
 		}
 
 		if (!refLine) return;
 
 		const refRect = refLine.getBoundingClientRect();
 
-		// Get sidenote width from computed styles
-		const computedStyle = getComputedStyle(root);
-		const sidenoteWidthStr = computedStyle
-			.getPropertyValue("--sidenote-width")
-			.trim();
 		// Get sidenote width from an existing margin element, or fall back to calculation
 		let sidenoteWidth = s.minSidenoteWidth * remToPx;
-
-		const existingMargin = root.querySelector<HTMLElement>(
-			"small.sidenote-margin",
-		);
 
 		// Parse the calc() manually from the CSS variable values
 		const scale =
@@ -1476,22 +1469,16 @@ export default class SidenotePlugin extends Plugin {
 
 			if (anchorMode === "text") {
 				// TEXT ANCHOR MODE:
-				// Position sidenote so its right edge is exactly gap1 from text
-				// sidenote.right = refLine.left - gap1
-				// sidenote.left = sidenote.right - sidenoteWidth = refLine.left - gap1 - sidenoteWidth
-				// cssLeft (relative to refLine.left) = -(gap1 + sidenoteWidth)
-				cssLeft = -(gap1 + sidenoteWidth);
+				// Position sidenote so its right edge is exactly gap1 from text (if in left margin)
 
-				// Constraint: sidenote.left must be at least gap2 from editor edge
-				// sidenote.left (absolute) = refLine.left + cssLeft
-				// sidenote.left >= rootRect.left + gap2
-				// refLine.left + cssLeft >= rootRect.left + gap2
-				// cssLeft >= rootRect.left + gap2 - refLine.left = gap2 - availableSpace
-				const minCssLeft = gap2 - availableSpace;
-				if (cssLeft < minCssLeft) {
-					// Not enough space - pull sidenote towards text to maintain gap2 from edge
-					cssLeft = minCssLeft;
-				}
+				// Maximum gap we can afford while still keeping at least gap2 from the editor edge.
+				// If availableSpace is small, this can go negative; clamp to 0 so we shrink gap1 smoothly.
+				const maxGap1ThatFits = Math.max(
+					0,
+					availableSpace - sidenoteWidth,
+				);
+				const effectiveGap1 = Math.min(gap1, maxGap1ThatFits);
+				cssLeft = -(effectiveGap1 + sidenoteWidth);
 			} else {
 				// EDGE ANCHOR MODE:
 				// Position sidenote so its left edge is exactly gap2 from editor edge
@@ -1523,13 +1510,13 @@ export default class SidenotePlugin extends Plugin {
 				// TEXT ANCHOR MODE:
 				// Position sidenote so its left edge is exactly gap1 from text
 				// cssRight works inversely: negative moves element to the right
-				cssRight = -(gap1 + sidenoteWidth);
+				const maxGap1ThatFits = Math.max(
+					0,
+					availableSpace - sidenoteWidth,
+				);
+				const effectiveGap1 = Math.min(gap1, maxGap1ThatFits);
 
-				// Constraint: sidenote.right must be at least gap2 from editor edge
-				const minCssRight = gap2 - availableSpace;
-				if (cssRight < minCssRight) {
-					cssRight = minCssRight;
-				}
+				cssRight = -(effectiveGap1 + sidenoteWidth);
 			} else {
 				// EDGE ANCHOR MODE:
 				// Position sidenote so its right edge is exactly gap2 from editor edge
@@ -1544,6 +1531,45 @@ export default class SidenotePlugin extends Plugin {
 
 			root.style.setProperty("--sidenote-offset", `${cssRight}px`);
 		}
+	}
+
+	/**
+	 * Helper for updateSidenotePositioning to find a stable reference line
+	 * This helps to establish reliable positioning even when the first lines are empty or virtualized.
+	 * @param root
+	 * @returns
+	 */
+	private findStableCmRefLine(root: HTMLElement): HTMLElement | null {
+		const rootRect = root.getBoundingClientRect();
+		const lines = Array.from(
+			root.querySelectorAll<HTMLElement>(".cm-line"),
+		);
+
+		// Prefer a line that is:
+		// - visible (height > 0)
+		// - not collapsed to left edge (left significantly inside the root)
+		// - has non-trivial width
+		for (const el of lines) {
+			if (!el.isConnected) continue;
+			const r = el.getBoundingClientRect();
+			if (r.height < 8) continue;
+			if (r.width < 40) continue;
+
+			const inset = r.left - rootRect.left;
+
+			// Heuristic: text column is usually inset by padding/gutter; reject 0–2px.
+			if (inset <= 2) continue;
+
+			return el;
+		}
+
+		// Fallback: first line with height
+		for (const el of lines) {
+			const r = el.getBoundingClientRect();
+			if (r.height > 0) return el;
+		}
+
+		return null;
 	}
 
 	/**
@@ -3675,6 +3701,25 @@ export default class SidenotePlugin extends Plugin {
 			this.rafId = null;
 			this.layout();
 		});
+	}
+
+	private scheduleLayoutStable() {
+		this.cancelScheduled();
+
+		// Leading pass: ASAP
+		this.rafId = requestAnimationFrame(() => {
+			this.rafId = null;
+			this.layout();
+		});
+
+		// Trailing pass: catches the “one second later” reflow
+		if (this.layoutTrailingTimer !== null) {
+			window.clearTimeout(this.layoutTrailingTimer);
+		}
+		this.layoutTrailingTimer = window.setTimeout(() => {
+			this.layoutTrailingTimer = null;
+			this.layout();
+		}, 200);
 	}
 
 	private rebindAndSchedule() {
