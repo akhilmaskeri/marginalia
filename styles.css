@@ -275,7 +275,29 @@
 .markdown-source-view.mod-cm6[data-sidenote-mode="hidden"]
 	.sidenote-margin,
 .markdown-reading-view[data-sidenote-mode="hidden"] .sidenote-margin {
-	display: none;
+	display: none !important;
+	visibility: hidden !important;
+	pointer-events: none !important;
+}
+
+/* === Prevent clipping by CM layers (only when sidenotes are active) === */
+.markdown-source-view.mod-cm6[data-has-sidenotes="true"]:not(
+		[data-sidenote-mode="hidden"]
+	)
+	.cm-editor,
+.markdown-source-view.mod-cm6[data-has-sidenotes="true"]:not(
+		[data-sidenote-mode="hidden"]
+	)
+	.cm-content,
+.markdown-source-view.mod-cm6[data-has-sidenotes="true"]:not(
+		[data-sidenote-mode="hidden"]
+	)
+	.cm-sizer,
+.markdown-source-view.mod-cm6[data-has-sidenotes="true"]:not(
+		[data-sidenote-mode="hidden"]
+	)
+	.cm-contentContainer {
+	overflow: visible !important;
 }
 
 /* Empty mode — opacity fade */
@@ -283,6 +305,15 @@
 .markdown-reading-view[data-sidenote-mode=""] .sidenote-margin {
 	opacity: 0;
 	pointer-events: none;
+	position: absolute;
+}
+
+/* === Defensive scoping: ensure plugin styles win === */
+.markdown-source-view.mod-cm6 .sidenote-margin,
+.markdown-reading-view .sidenote-margin {
+	box-sizing: border-box !important;
+	z-index: 1;
+	contain: layout style;
 }
 
 /* === Internal links in sidenotes === */

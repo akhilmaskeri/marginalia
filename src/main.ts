@@ -134,6 +134,8 @@ export default class SidenotePlugin extends Plugin {
 	private static readonly EDIT_TRIGGER_DELAY = 50;
 	private static readonly INSERT_SIDENOTE_DELAY = 150;
 	private static readonly MAX_FOOTNOTE_EDIT_RETRIES = 10;
+	private readingModeResizeThrottleTime: number = 0;
+	private readingModeResizeTrailingTimer: number | null = null;
 
 	private activeEditingMargin: HTMLElement | null = null;
 
@@ -568,6 +570,21 @@ export default class SidenotePlugin extends Plugin {
 			this.scanDocumentForSidenotes();
 			this.rebindAndSchedule();
 			void this.preCacheFileContent();
+
+			// Debug: log what state we're in
+			setTimeout(() => {
+				const cmRoot = this.cmRoot;
+				console.log("[Sidenotes] Startup check:", {
+					hasCmRoot: !!cmRoot,
+					cmRootConnected: cmRoot?.isConnected,
+					cmRootWidth: cmRoot?.getBoundingClientRect().width,
+					mode: cmRoot?.dataset.sidenoteMode,
+					hasSidenotes: cmRoot?.dataset.hasSidenotes,
+					marginCount: cmRoot?.querySelectorAll("small.sidenote-margin")
+						.length,
+					resizeObserverExists: !!this.resizeObserver,
+				});
+			}, 2000);
 		});
 	}
 
@@ -619,7 +636,7 @@ export default class SidenotePlugin extends Plugin {
 			this.readingModeScrollTimer = null;
 		}
 
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = this.getMarkdownView();
 		this.cleanupView(view);
 
 		// Remove CSS custom properties and data attributes
@@ -867,7 +884,7 @@ export default class SidenotePlugin extends Plugin {
 	 * synchronously during PDF export post-processing.
 	 */
 	private async preCacheFileContent() {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = this.getMarkdownView();
 		const file = view?.file ?? this.app.workspace.getActiveFile();
 		if (!file) return;
 
@@ -877,13 +894,28 @@ export default class SidenotePlugin extends Plugin {
 		}
 	}
 
+	private getMarkdownView(): MarkdownView | null {
+		// Try active view first
+		const active = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (active) return active;
+
+		// Fallback: find any visible markdown leaf
+		const leaves = this.app.workspace.getLeavesOfType("markdown");
+		for (const leaf of leaves) {
+			if (leaf.view instanceof MarkdownView) {
+				return leaf.view;
+			}
+		}
+		return null;
+	}
+
 	/**
 	 * Clean up sidenote markup from reading mode only.
 	 * Never manually remove DOM inside CM6 .cm-content — that
 	 * corrupts CM6's internal state and causes sidenotes to vanish.
 	 */
 	private cleanupReadingMode() {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = this.getMarkdownView();
 		if (!view) return;
 
 		const readingRoot = view.containerEl.querySelector<HTMLElement>(
@@ -901,7 +933,7 @@ export default class SidenotePlugin extends Plugin {
 	 */
 	private forceReadingModeRefresh() {
 		this.needsReadingModeRefresh = true;
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = this.getMarkdownView();
 		if (!view) return;
 
 		const readingRoot = view.containerEl.querySelector<HTMLElement>(
@@ -1140,9 +1172,23 @@ export default class SidenotePlugin extends Plugin {
 		minInterval: number = SidenotePlugin.RESIZE_DEBOUNCE,
 	) {
 		const now = Date.now();
-		if (now - this.resizeThrottleTime >= minInterval) {
+
+		// Clear any pending trailing call
+		if (this.readingModeResizeTrailingTimer !== null) {
+			window.clearTimeout(this.readingModeResizeTrailingTimer);
+		}
+
+		if (now - this.readingModeResizeThrottleTime >= minInterval) {
+			this.readingModeResizeThrottleTime = now;
 			this.scheduleReadingModeLayout();
 		}
+
+		// Always schedule a trailing call to catch the final state
+		this.readingModeResizeTrailingTimer = window.setTimeout(() => {
+			this.readingModeResizeTrailingTimer = null;
+			this.readingModeResizeThrottleTime = Date.now();
+			this.scheduleReadingModeLayout();
+		}, minInterval);
 	}
 
 	private setupVisibilityObserver() {
@@ -1337,6 +1383,12 @@ export default class SidenotePlugin extends Plugin {
 		// Get root element rect
 		const rootRect = root.getBoundingClientRect();
 
+		console.log("[Sidenotes] updateSidenotePositioning:", {
+			rootWidth: rootRect.width,
+			isReadingMode,
+			isConnected: root.isConnected,
+		});
+
 		// Get rem to px conversion
 		const remToPx =
 			parseFloat(getComputedStyle(document.documentElement).fontSize) ||
@@ -1405,18 +1457,15 @@ export default class SidenotePlugin extends Plugin {
 		const existingMargin = root.querySelector<HTMLElement>(
 			"small.sidenote-margin",
 		);
-		if (existingMargin) {
-			sidenoteWidth = existingMargin.getBoundingClientRect().width;
-		} else if (sidenoteWidthStr) {
-			// Parse the calc() manually from the CSS variable values
-			const scale =
-				parseFloat(
-					getComputedStyle(root).getPropertyValue("--sidenote-scale"),
-				) || 0.5;
-			const baseWidth = s.minSidenoteWidth * remToPx;
-			const maxExtra = (s.maxSidenoteWidth - s.minSidenoteWidth) * remToPx;
-			sidenoteWidth = baseWidth + maxExtra * scale;
-		}
+
+		// Parse the calc() manually from the CSS variable values
+		const scale =
+			parseFloat(
+				getComputedStyle(root).getPropertyValue("--sidenote-scale"),
+			) || 0.5;
+		const baseWidth = s.minSidenoteWidth * remToPx;
+		const maxExtra = (s.maxSidenoteWidth - s.minSidenoteWidth) * remToPx;
+		sidenoteWidth = baseWidth + maxExtra * scale;
 
 		if (position === "left") {
 			// Available space between editor left edge and the text (refLine left edge)
@@ -1585,7 +1634,7 @@ export default class SidenotePlugin extends Plugin {
 		index: number;
 		openingTag: string;
 	} | null {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = this.getMarkdownView();
 		const content =
 			view?.editor?.getValue() ||
 			(view as { data?: string })?.data ||
@@ -1678,7 +1727,7 @@ export default class SidenotePlugin extends Plugin {
 	// ==================== Reading Mode Processing ====================
 
 	private processReadingModeSidenotes(element: HTMLElement) {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = this.getMarkdownView();
 		if (!view) return;
 
 		const readingRoot = view.containerEl.querySelector<HTMLElement>(
@@ -2205,7 +2254,7 @@ export default class SidenotePlugin extends Plugin {
 		this.footnoteProcessingTimer = window.setTimeout(() => {
 			this.footnoteProcessingTimer = null;
 
-			const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+			const view = this.getMarkdownView();
 			if (!view) return;
 
 			const readingRoot = view.containerEl.querySelector<HTMLElement>(
@@ -2401,7 +2450,7 @@ export default class SidenotePlugin extends Plugin {
 	 * never use stale text captured at DOM-creation time.
 	 */
 	private getFootnoteSourceText(footnoteId: string): string | null {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = this.getMarkdownView();
 		const content =
 			this.cachedSourceContent ||
 			view?.editor?.getValue() ||
@@ -3012,7 +3061,7 @@ export default class SidenotePlugin extends Plugin {
 		footnoteId: string,
 		newText: string,
 	) {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = this.getMarkdownView();
 		const file = view?.file ?? this.app.workspace.getActiveFile();
 		if (!file) return;
 
@@ -3091,6 +3140,10 @@ export default class SidenotePlugin extends Plugin {
 		width: number,
 	): "hidden" | "compact" | "normal" | "full" {
 		const s = this.settings;
+		// Sanity check: if width is 0 or unreasonably small, hide
+		if (width <= 0 || width < 200) {
+			return "hidden";
+		}
 		if (width < s.hideBelow) {
 			return "hidden";
 		} else if (width < s.compactBelow) {
@@ -3117,7 +3170,7 @@ export default class SidenotePlugin extends Plugin {
 
 	private scheduleReadingModeLayout() {
 		requestAnimationFrame(() => {
-			const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+			const view = this.getMarkdownView();
 			if (!view) return;
 
 			const readingRoot = view.containerEl.querySelector<HTMLElement>(
@@ -3167,7 +3220,7 @@ export default class SidenotePlugin extends Plugin {
 
 	private scanDocumentForSidenotes() {
 		console.warn("[Sidenotes] Scanning document for sidenotes...");
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = this.getMarkdownView();
 		if (!view) {
 			this.documentHasSidenotes = false;
 			return;
@@ -3238,7 +3291,7 @@ export default class SidenotePlugin extends Plugin {
 	 * subsequent mode switches and undo operations see fresh data.
 	 */
 	private refreshCachedSourceContent() {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = this.getMarkdownView();
 		const content =
 			view?.editor?.getValue() || (view as { data?: string })?.data || "";
 		if (content) {
@@ -3632,6 +3685,17 @@ export default class SidenotePlugin extends Plugin {
 	// ==================== Binding ====================
 
 	private rebind() {
+		// First confirm we have a view and cmRoot to bind to before tearing down the old setup,
+		const view = this.getMarkdownView();
+		if (!view) return; // Don't tear down if there's no view to bind to
+
+		const root = view.containerEl;
+		const cmRoot = root.querySelector<HTMLElement>(
+			".markdown-source-view.mod-cm6",
+		);
+		if (!cmRoot) return; // Don't tear down if there's no cmRoot
+
+		// Only now tear down the old setup after confirming we have a new view and cmRoot to bind to,
 		this.cleanups.forEach((fn) => fn());
 		this.cleanups = [];
 
@@ -3642,15 +3706,6 @@ export default class SidenotePlugin extends Plugin {
 			this.resizeObserver = null;
 		}
 
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-		if (!view) return;
-
-		const root = view.containerEl;
-		const cmRoot = root.querySelector<HTMLElement>(
-			".markdown-source-view.mod-cm6",
-		);
-		if (!cmRoot) return;
-
 		this.cmRoot = cmRoot;
 
 		cmRoot.dataset.hasSidenotes = this.documentHasSidenotes
@@ -3659,16 +3714,31 @@ export default class SidenotePlugin extends Plugin {
 		cmRoot.dataset.sidenotePosition = this.settings.sidenotePosition;
 		// cmRoot.dataset.sidenoteAnchor = this.settings.sidenoteAnchor;
 
+		// Handle resize events with a debounce to prevent thrashing
 		let resizeTimeout: number | null = null;
+		let lastObservedWidth = 0;
+
 		this.resizeObserver = new ResizeObserver((entries) => {
-			if (resizeTimeout !== null) return;
+			const entry = entries[0];
+			const currentWidth = entry?.contentRect?.width ?? 0;
+
+			console.log("[Sidenotes] ResizeObserver fired:", {
+				currentWidth,
+				lastObservedWidth,
+				connected: cmRoot.isConnected,
+			});
+
+			if (Math.abs(currentWidth - lastObservedWidth) < 1) return;
+			lastObservedWidth = currentWidth;
+
+			if (resizeTimeout !== null) {
+				window.clearTimeout(resizeTimeout);
+			}
 			resizeTimeout = window.setTimeout(() => {
 				resizeTimeout = null;
 				this.scheduleLayout();
-
-				// Also update reading mode on resize
 				this.scheduleReadingModeLayout();
-			}, 100);
+			}, 50);
 		});
 		this.resizeObserver.observe(cmRoot);
 
@@ -3811,7 +3881,7 @@ export default class SidenotePlugin extends Plugin {
 	// ==================== Document Position ====================
 
 	private getDocumentPosition(el: HTMLElement): number | null {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = this.getMarkdownView();
 		if (!view) return null;
 
 		const editor = (view.editor as { cm?: EditorView })?.cm;
@@ -3848,11 +3918,25 @@ export default class SidenotePlugin extends Plugin {
 
 	private layout() {
 		const cmRoot = this.cmRoot;
-		if (!cmRoot) return;
+		if (!cmRoot) {
+			console.log("[Sidenotes] layout() - no cmRoot");
+			return;
+		}
 
 		const cmRootRect = cmRoot.getBoundingClientRect();
 		const editorWidth = cmRootRect.width;
 		const mode = this.calculateMode(editorWidth);
+
+		console.log("[Sidenotes] layout():", {
+			editorWidth,
+			mode,
+			isConnected: cmRoot.isConnected,
+			unwrappedCount: cmRoot.querySelectorAll(
+				"span.sidenote:not(.sidenote-number span.sidenote)",
+			).length,
+			wrappedCount: cmRoot.querySelectorAll("small.sidenote-margin")
+				.length,
+		});
 
 		cmRoot.style.setProperty("--editor-width", `${editorWidth}px`);
 		cmRoot.dataset.sidenoteMode = mode;
@@ -3921,7 +4005,7 @@ export default class SidenotePlugin extends Plugin {
 			this.removeAllSidenoteMarkup(cmRoot);
 
 			// Get the source content to determine correct indices
-			const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+			const view = this.getMarkdownView();
 			if (!view?.editor) return;
 
 			const content = view.editor.getValue();
@@ -4272,7 +4356,7 @@ export default class SidenotePlugin extends Plugin {
 			e.preventDefault();
 			e.stopPropagation();
 
-			const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+			const view = this.getMarkdownView();
 			if (!view?.editor) return;
 
 			const editor = view.editor;
@@ -4483,7 +4567,7 @@ export default class SidenotePlugin extends Plugin {
 		originalText: string,
 		newText: string,
 	) {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = this.getMarkdownView();
 		if (!view?.editor) return;
 
 		const editor = view.editor;
@@ -4524,7 +4608,7 @@ export default class SidenotePlugin extends Plugin {
 	}
 
 	private commitFootnoteSidenoteText(footnoteId: string, newText: string) {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = this.getMarkdownView();
 		if (!view?.editor) return;
 
 		const editor = view.editor;
@@ -4674,7 +4758,7 @@ export default class SidenotePlugin extends Plugin {
 	 * Update collisions in reading mode.
 	 */
 	private updateReadingModeCollisions() {
-		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		const view = this.getMarkdownView();
 		if (!view) return;
 
 		const readingRoot = view.containerEl.querySelector<HTMLElement>(
