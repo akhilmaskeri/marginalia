@@ -22,6 +22,7 @@ _Editing a sidenote in the margin, adding a new sidenote, then adding a new marg
   - Sidenotes can be configured to work one of two ways:
     - **Markdown footnotes**: `This is a sentence[^1].`
     - **an HTML tag**: `<span class="sidenote">`.
+  - HTML Tag sidenotes work in _Editing_ and _Reading_ modes. When using footnotes, this currently only works in Reading Mode.
 - **Margin Notes**: Non-numbered notes displayed in the margin. In Editing Mode, it will display a symbol in the main text where the margin note is "placed".
   - **Markdown footnotes**: Written as `[^mn-1]` or `[^mn-kitchen]`
   - **HTML**: Written as `<span class="sidenote margin-note">`.
@@ -62,6 +63,7 @@ _Editing a sidenote in the margin, adding a new sidenote, then adding a new marg
 
 - [FelixHT's Obsidian Sidenotes Plugin](https://github.com/FelixHT/obsidian_side_notes) - hasn't been updated in a while - one user reported it doesn't fully function any longer but I haven't tested it. I did build some of the functionality in my plugin based on this.
 - [SideNote Plugin](https://github.com/mofukuru/SideNote) allows you to add comments to a piece of text, and this is viewable in the side panel.
+- [Cornell Notes Learning Vault](https://github.com/TfTHacker/cornell-notes-learning-vault) from TfTHacker
 - [crnkv/obsidian-sidenote-auto-adjust-module](https://github.com/crnkv/obsidian-sidenote-auto-adjust-module) ([forum post](https://forum.obsidian.md/t/css-snippet-sidenote-auto-adjust-module-four-styles-available/94495))
 - [Collapsible Sidenotes using a CSS trick](https://forum.obsidian.md/t/meta-post-common-css-hacks/1978/341)
 - [Sidenotes Using CSS also](https://scripter.co/sidenotes-using-only-css/)
@@ -72,9 +74,11 @@ _Editing a sidenote in the margin, adding a new sidenote, then adding a new marg
 
 ## Setup
 
-1. Add the plugin to Obsidian. If copying manually from this repo, you can copy the contents of `/sidenotes/` into `your-vault/.obsidian/plugins/sidenotes`.
-2. If copying manually, restart Obsidian and then enable the plugin in **Settings**.
-3. **Configure the settings** how you like:
+1. If copying manually from this repo, download it from [the Releases page](https://github.com/cparsell/sidenotes/releases).
+2. Add the plugin files to your Obsidian vault.
+   Copy the contents into `YOUR-VAULT/.obsidian/plugins/sidenotes`.
+3. If copying manually, restart Obsidian and then enable the plugin in **Settings**.
+4. **Configure the settings** how you like:
    - Choose **sidenote format**:
      - **Footnotes**: Traditional Markdown footnotes will become sidenotes
        - **Hide footnotes:** Choose if you want to hide the origina footnotes at the bottom of the note
