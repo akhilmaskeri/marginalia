@@ -1451,22 +1451,11 @@ export default class SidenotePlugin extends Plugin {
 		// Get sidenote width from an existing margin element, or fall back to calculation
 		const sidenoteWidth = this.getSidenoteWidthPx(root);
 
-		// Parse the calc() manually from the CSS variable values
-		// const scale =
-		// 	parseFloat(
-		// 		getComputedStyle(root).getPropertyValue("--sidenote-scale"),
-		// 	) || 0.5;
-		// const baseWidth = s.minSidenoteWidth * remToPx;
-		// const maxExtra = (s.maxSidenoteWidth - s.minSidenoteWidth) * remToPx;
-
 		if (position === "left") {
 			// Available space between editor left edge and the text (refLine left edge)
-
 			const textLeft = isReadingMode
 				? (this.getReadingTextLeft(root) ?? refRect.left)
 				: (this.getEditorTextEdges(root)?.left ?? refRect.left);
-
-			const availableSpace = textLeft - rootRect.left;
 
 			// Calculate the CSS left value (negative = to the left of refLine)
 			let cssLeft: number;
@@ -1481,7 +1470,6 @@ export default class SidenotePlugin extends Plugin {
 				// Use the real editor edge (scroller/view), not rootRect.left (which may already be padded).
 				const editorEdgeLeft = (() => {
 					if (isReadingMode) return root.getBoundingClientRect().left;
-
 					const scroller = root.querySelector<HTMLElement>(".cm-scroller");
 					return (scroller ?? root).getBoundingClientRect().left;
 				})();
@@ -1505,19 +1493,12 @@ export default class SidenotePlugin extends Plugin {
 				: null;
 			const textRight = textEdges ? textEdges.right : refRect.right;
 
-			const availableSpace = rootRect.right - textRight;
-
 			let cssRight: number;
 
 			if (anchorMode === "text") {
 				// TEXT ANCHOR MODE:
 				// Position sidenote so its left edge is exactly gap1 from text
 				// cssRight works inversely: negative moves element to the right
-				const maxGap1ThatFits = Math.max(
-					0,
-					availableSpace - sidenoteWidth,
-				);
-
 				cssRight = -(gap1 + sidenoteWidth);
 			} else {
 				const editorEdgeRight = (() => {
