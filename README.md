@@ -17,11 +17,11 @@ _Editing a sidenote in the margin, adding a new sidenote, then adding a new marg
 
 - **Sidenotes**: Sidenotes are displayed in the margin of an Obsidian note. Sidenotes show in _Editing_ and _Reading_ modes. It's possible to enable editing of sidenotes in Reading Mode.
   Run command `Insert Sidenote` to start one.
-  - **External and Internal link support**
+  - **Supports external and internal links in sidenotes**
   - **Supports basic Markdown formatting:** **Bold**, _italic_, and `inline code`
   - Sidenotes can be configured to work one of two ways:
     - **Markdown footnotes**: `This is a sentence[^1].`
-    - **an HTML tag**: `<span class="sidenote">`.
+    - **an HTML tag**: `<span class="sidenote">`. I use these because it was simple for me to make sidenotes compatible with my web-published notes.
   - HTML Tag sidenotes work in _Editing_ and _Reading_ modes. When using footnotes, this currently only works in Reading Mode.
 - **Margin Notes**: Non-numbered notes displayed in the margin. In Editing Mode, it will display a symbol in the main text where the margin note is "placed".
   - **Markdown footnotes**: Written as `[^mn-1]` or `[^mn-kitchen]`
@@ -74,7 +74,7 @@ _Editing a sidenote in the margin, adding a new sidenote, then adding a new marg
 
 ## Setup
 
-1. If copying manually from this repo, download it from [the Releases page](https://github.com/cparsell/sidenotes/releases).
+1. If copying manually from this repo, download the plugin from [the Releases page](https://github.com/cparsell/sidenotes/releases).
 2. Add the plugin files to your Obsidian vault.
    Copy the contents into `YOUR-VAULT/.obsidian/plugins/sidenotes`.
 3. If copying manually, restart Obsidian and then enable the plugin in **Settings**.
@@ -104,9 +104,11 @@ It will insert this:
 <span class="sidenote">{cursor}</span>
 ```
 
+Click on the sidenote to edit it in the margin. Press `ENTER` to update. Press `SHIFT+ENTER` to add a new line in the sidenote.
+
 ### **If using footnotes**
 
-it will insert `[^1]` and create a sidenote for you to enter text in.
+it will insert `[^1]` and add a footnote at the bottom of the document. Press `ENTER` to update. Using `SHIFT+ENTER` will not work to add a new line in a footnote because of how footnotes are formatted in Markdown.
 
 ## Web Publishing
 
