@@ -155,6 +155,42 @@
 	text-align: var(--sn-text-align, left) !important;
 }
 
+/* === Per-note forced side (overrides root data-sidenote-position) === */
+
+/* Force-LEFT: always render in the left margin */
+.markdown-source-view.mod-cm6
+	.sidenote-number[data-sidenote-side="left"]
+	.sidenote-margin,
+.markdown-reading-view
+	.sidenote-number[data-sidenote-side="left"]
+	.sidenote-margin {
+	left: calc(
+		var(
+				--sidenote-offset,
+				calc(-1 * (var(--sidenote-width) + var(--sidenote-gap)))
+			) -
+			var(--sidenote-indent-adjust, 0px)
+	) !important;
+	right: auto !important;
+}
+
+/* Force-RIGHT: always render in the right margin */
+.markdown-source-view.mod-cm6
+	.sidenote-number[data-sidenote-side="right"]
+	.sidenote-margin,
+.markdown-reading-view
+	.sidenote-number[data-sidenote-side="right"]
+	.sidenote-margin {
+	right: calc(
+		var(
+				--sidenote-offset,
+				calc(-1 * (var(--sidenote-width) + var(--sidenote-gap)))
+			) +
+			var(--sidenote-indent-adjust, 0px)
+	) !important;
+	left: auto !important;
+}
+
 /* === Prevent clipping by CM layers === */
 .markdown-source-view.mod-cm6 .cm-editor,
 .markdown-source-view.mod-cm6 .cm-content,
