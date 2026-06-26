@@ -739,6 +739,25 @@ export default class SidenotePlugin extends Plugin {
 		return elOrId.classList.contains("margin-note");
 	}
 
+	/**
+	 * Return the forced side for a sidenote element or footnote ID.
+	 * - HTML format: <span class="sidenote sidenote-left"> → "left"
+	 * - Footnote format: [^l-...] → "left", [^r-...] → "right"
+	 * Returns null when the note should use the global setting.
+	 */
+	public getForcedSide(
+		elOrId: HTMLElement | string,
+	): "left" | "right" | null {
+		if (typeof elOrId === "string") {
+			if (elOrId.startsWith("l-")) return "left";
+			if (elOrId.startsWith("r-")) return "right";
+			return null;
+		}
+		if (elOrId.classList.contains("sidenote-left")) return "left";
+		if (elOrId.classList.contains("sidenote-right")) return "right";
+		return null;
+	}
+
 	public setupMarginNotePopupPublic(
 		wrapper: HTMLElement,
 		margin: HTMLElement,
@@ -2150,15 +2169,33 @@ export default class SidenotePlugin extends Plugin {
 						? this.isMarginNote(item.footnoteId)
 						: false;
 
+			// Determine forced side (HTML class or footnote prefix)
+			const forcedSide =
+				item.type === "sidenote"
+					? this.getForcedSide(item.el)
+					: item.footnoteId
+						? this.getForcedSide(item.footnoteId)
+						: null;
+
 			// For footnotes, use the footnote's own ID as the number
 			// (so [^3] always displays as "3" regardless of which refs are visible).
+			// For forced-side footnotes (l-*, r-*), extract the numeric part.
 			// For HTML sidenotes, use the sequential counter.
 			// For margin notes, use empty string (no number).
 			let numStr: string;
 			if (isMargin) {
 				numStr = "";
 			} else if (item.footnoteId) {
-				numStr = item.footnoteId;
+				if (forcedSide) {
+					// l-1 → show "1", r-2 → show "2"
+					const idNum = parseInt(
+						item.footnoteId.replace(/^[lr]-/, ""),
+						10,
+					);
+					numStr = this.formatNumber(isNaN(idNum) ? num++ : idNum);
+				} else {
+					numStr = item.footnoteId;
+				}
 			} else {
 				numStr = this.formatNumber(num++);
 			}
@@ -2171,6 +2208,9 @@ export default class SidenotePlugin extends Plugin {
 			if (isMargin) {
 				wrapper.classList.add("margin-note");
 				margin.classList.add("margin-note");
+			}
+			if (forcedSide) {
+				wrapper.dataset.sidenoteSide = forcedSide;
 			}
 			wrapper.dataset.sidenoteNum = numStr;
 			margin.dataset.sidenoteNum = numStr;
@@ -2580,7 +2620,11 @@ export default class SidenotePlugin extends Plugin {
 		// Example: [^mn-3] exists but no "[^mn-3]:" definition block -> remove the reference token.
 		// Do this BEFORE resequencing so counters aren’t affected by orphans.
 		const orphanMarginIds = seenIds.filter(
-			(id) => id.startsWith("mn-") && !definedIds.has(id),
+			(id) =>
+			(id.startsWith("mn-") ||
+				id.startsWith("l-") ||
+				id.startsWith("r-")) &&
+			!definedIds.has(id),
 		);
 
 		if (orphanMarginIds.length > 0) {
@@ -2624,14 +2668,18 @@ export default class SidenotePlugin extends Plugin {
 		const renumberMap = new Map<string, string>();
 		let regularCounter = 1;
 		let marginCounter = 1;
+		let leftCounter = 1;
+		let rightCounter = 1;
 
 		for (const oldId of seenIds) {
 			if (oldId.startsWith("mn-")) {
-				renumberMap.set(oldId, `mn-${marginCounter}`);
-				marginCounter++;
+				renumberMap.set(oldId, `mn-${marginCounter++}`);
+			} else if (oldId.startsWith("l-")) {
+				renumberMap.set(oldId, `l-${leftCounter++}`);
+			} else if (oldId.startsWith("r-")) {
+				renumberMap.set(oldId, `r-${rightCounter++}`);
 			} else {
-				renumberMap.set(oldId, String(regularCounter));
-				regularCounter++;
+				renumberMap.set(oldId, String(regularCounter++));
 			}
 		}
 
@@ -2747,12 +2795,19 @@ export default class SidenotePlugin extends Plugin {
 		const newDefs: string[] = [];
 		const orderedIds = [...renumberMap.entries()]
 			.sort((a, b) => {
-				const aIsMargin = a[1].startsWith("mn-");
-				const bIsMargin = b[1].startsWith("mn-");
-				if (aIsMargin !== bIsMargin) return aIsMargin ? 1 : -1;
-				const aNum = parseInt(a[1].replace("mn-", ""), 10);
-				const bNum = parseInt(b[1].replace("mn-", ""), 10);
-				return aNum - bNum;
+				const getGroup = (id: string): number => {
+					if (id.startsWith("mn-")) return 3;
+					if (id.startsWith("r-")) return 2;
+					if (id.startsWith("l-")) return 1;
+					return 0;
+				};
+				const groupDiff = getGroup(a[1]) - getGroup(b[1]);
+				if (groupDiff !== 0) return groupDiff;
+				const getNum = (id: string): number => {
+					const m = id.match(/(\d+)$/);
+					return m ? parseInt(m[1] ?? "0", 10) : 0;
+				};
+				return getNum(a[1]) - getNum(b[1]);
 			})
 			.map(([_, newId]) => newId);
 
@@ -4229,6 +4284,7 @@ export default class SidenotePlugin extends Plugin {
 			try {
 				for (const item of itemsWithSourceIndex) {
 					const isMargin = this.isMarginNote(item.el);
+					const forcedSide = this.getForcedSide(item.el);
 					const numStr = isMargin ? "" : this.formatNumber(item.index);
 					const wrapper = document.createElement("span");
 					wrapper.className = "sidenote-number";
@@ -4238,6 +4294,10 @@ export default class SidenotePlugin extends Plugin {
 					if (isMargin) {
 						wrapper.classList.add("margin-note");
 						margin.classList.add("margin-note");
+					}
+
+					if (forcedSide) {
+						wrapper.dataset.sidenoteSide = forcedSide;
 					}
 
 					wrapper.dataset.sidenoteNum = numStr;
@@ -4850,17 +4910,29 @@ export default class SidenotePlugin extends Plugin {
 			anchorY: number; // Top position when shift=0 (aligned with anchor)
 			height: number;
 			shift: number; // Shift to apply (will be calculated)
+			side: "left" | "right";
 		}[] = [];
 
 		for (const margin of validMargins) {
 			const rect = margin.getBoundingClientRect();
 			if (rect.height <= 0) continue;
 
+			// Determine which column this margin lives in so left and right
+			// sidenotes never interfere with each other's collision pass.
+			const wrapper = margin.closest<HTMLElement>("span.sidenote-number");
+			const forcedSide = wrapper?.dataset.sidenoteSide as
+				| "left"
+				| "right"
+				| undefined;
+			const side: "left" | "right" =
+				forcedSide ?? this.settings.sidenotePosition;
+
 			items.push({
 				el: margin,
 				anchorY: rect.top,
 				height: rect.height,
 				shift: 0,
+				side,
 			});
 		}
 
@@ -4878,21 +4950,20 @@ export default class SidenotePlugin extends Plugin {
 			return 0;
 		});
 
-		// Step 5: Greedily assign positions to avoid collisions
-		// Track where the next available vertical position is
-		let nextFreeY = -Infinity;
+		// Step 5: Greedily assign positions to avoid collisions, per column.
+		// Left and right sidenotes are in separate columns and must never
+		// influence each other's vertical stacking.
+		const resolveGroup = (group: typeof items) => {
+			let nextFreeY = -Infinity;
+			for (const item of group) {
+				const targetY = Math.max(item.anchorY, nextFreeY);
+				item.shift = targetY - item.anchorY;
+				nextFreeY = targetY + item.height + spacing;
+			}
+		};
 
-		for (const item of items) {
-			// This margin wants to be at anchorY
-			// But it cannot start above nextFreeY
-			const targetY = Math.max(item.anchorY, nextFreeY);
-
-			// The shift is how far from anchorY we need to move
-			item.shift = targetY - item.anchorY;
-
-			// Update nextFreeY to be after this margin
-			nextFreeY = targetY + item.height + spacing;
-		}
+		resolveGroup(items.filter((i) => i.side === "left"));
+		resolveGroup(items.filter((i) => i.side === "right"));
 
 		// Step 6: Apply the calculated shifts
 		for (const item of items) {
@@ -6297,12 +6368,16 @@ class FootnoteSidenoteWidget extends WidgetType {
 
 	toDOM(): HTMLElement {
 		const isMargin = this.plugin.isMarginNote(this.footnoteId);
+		const forcedSide = this.plugin.getForcedSide(this.footnoteId);
 
 		const wrapper = document.createElement("span");
 		wrapper.className = "sidenote-number";
 
 		wrapper.dataset.sidenoteNum = this.numberText;
 		wrapper.dataset.footnoteId = this.footnoteId;
+		if (forcedSide) {
+			wrapper.dataset.sidenoteSide = forcedSide;
+		}
 
 		const margin = document.createElement("small");
 		margin.className = "sidenote-margin";
