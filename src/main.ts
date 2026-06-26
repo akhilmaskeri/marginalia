@@ -2705,11 +2705,21 @@ export default class SidenotePlugin extends Plugin {
 				const textLines = [defMatch[2] || ""];
 				const startLine = i;
 
-				// Collect continuation lines
+				// Collect continuation lines (including blank lines between indented paragraphs)
 				i++;
 				while (i < lines.length) {
-					const contLine = lines[i];
-					if (contLine && contLine.match(/^[ \t]+\S/)) {
+					const contLine = lines[i] ?? "";
+					if (contLine === "" || contLine.match(/^[ \t]*$/) !== null) {
+						// Blank line — only continue if the next non-empty line is indented
+						const next = lines[i + 1] ?? "";
+						if (next.match(/^[ \t]+\S/) !== null) {
+							textLines.push(contLine);
+							i++;
+							continue;
+						}
+						break;
+					}
+					if (contLine.match(/^[ \t]+\S/) !== null) {
 						textLines.push(contLine);
 						i++;
 					} else {
