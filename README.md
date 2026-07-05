@@ -1,133 +1,109 @@
-## Sidenotes
+# Marginalia
 
-I first discovered sidenotes, at least in a conscious way, on [Gwern.net](https://gwern.net/sidenote) which was referencing [Edward Tufte's conventions](https://edwardtufte.github.io/tufte-css/).
+Tufte-style sidenotes for [Obsidian](https://obsidian.md), displayed in the margin of your notes with automatic numbering.
 
-My goal is to have sidenotes work in **Obsidian** as well as my **notes published on the web**. More recently, I've started working on making it compatible with PDF export (still in progress)
+This is a fork of [cparsell/sidenotes](https://github.com/cparsell/sidenotes), simplified to support HTML sidenotes only (footnote-based sidenotes and margin notes have been removed). Inspired by [Gwern.net](https://gwern.net/sidenote) and [Edward Tufte's conventions](https://edwardtufte.github.io/tufte-css/).
 
-![Sidenotes Basics](https://github.com/cparsell/sidenotes/blob/main/Screenshot2.png)
-_Basic sidenote capabilities demonstrated_
+> **Note:** If you previously used the original Sidenotes plugin, disable it before enabling Marginalia — both act on the same `<span class="sidenote">` elements and will conflict.
 
-![Neumorphic badges](https://github.com/cparsell/sidenotes/blob/main/Screenshot-badges-multi.png)
-_An optional style that highlights references._
+## Features
 
-![Editing sidenotes](https://github.com/cparsell/sidenotes/blob/main/Screen-Record-Editing2.gif)
-_Editing a sidenote in the margin, adding a new sidenote, then adding a new margin note_
+- **Sidenotes in the margin** — shown in both Editing (Live Preview) and Reading modes, with automatically incrementing numbers.
+- **Per-note side override** — force an individual sidenote into the left or right margin, regardless of the global position setting.
+- **Per-note styling** — each sidenote can have its own background color, text color, font size, and font family. Edit styles via a gear icon or by hand in source mode.
+- **Edit in the margin** — click a sidenote to edit it in place. `ENTER` commits, `SHIFT+ENTER` adds a new line, `ESC` cancels. Editing in Reading mode can be enabled in settings.
+- **Links and formatting** — internal (`[[Note]]`) and external links, **bold**, _italic_, and `inline code` all work inside sidenotes.
+- **Collision handling** — overlapping sidenotes are automatically spaced apart, per margin column.
+- **Responsive layout** — sidenotes shrink in narrow windows and hide below a configurable breakpoint.
+- **PDF export** (experimental) — optionally include sidenotes in the margin of exported PDFs.
+- **Web-publishing friendly** — sidenotes are plain HTML spans in your Markdown, so the same notes can be styled with CSS when published (e.g. with [Digital Garden](https://github.com/oleeskild/Obsidian-Digital-Garden)).
 
-### Features
+## Usage
 
-- **Sidenotes**: Sidenotes are displayed in the margin of an Obsidian note. Sidenotes show in _Editing_ and _Reading_ modes. It's possible to enable editing of sidenotes in Reading Mode.
-  Run command `Insert Sidenote` to start one.
-  - **Supports external and internal links in sidenotes**
-  - **Supports basic Markdown formatting:** **Bold**, _italic_, and `inline code`
-  - Sidenotes can be configured to work one of two ways:
-    - **Markdown footnotes**: `This is a sentence[^1].`
-    - **an HTML tag**: `<span class="sidenote">`. I use these because it was simple for me to make sidenotes compatible with my web-published notes.
-  - HTML Tag sidenotes work in _Editing_ and _Reading_ modes. When using footnotes, this currently only works in Reading Mode.
-- **Margin Notes**: Non-numbered notes displayed in the margin. In Editing Mode, it will display a symbol in the main text where the margin note is "placed".
-  - **Markdown footnotes**: Written as `[^mn-1]` or `[^mn-kitchen]`
-  - **HTML**: Written as `<span class="sidenote margin-note">`.
-
-- **They are editable in the margin**. Click on it, edit, and press enter. `SHIFT+ENTER` for a new line.
-- **Dynamic styling**: Font size shrinks as horizontal space get smaller. At a certain breakpoint, sidenotes hide when a window gets too skinny.
-- **PDF Export**: This currently only works with HTML sidenotes. Footnotes are more complicated and will take time to (hopefully) figure that out
-- **Settings**:
-  - Show sidenotes in left or right margin
-  - Superscript numbers can be added to the text. The numbers increment automatically.
-  - Numbers displayed as Arabic numbers, Roman letters, or no numbers
-  - Numbers styled as plain or with badges to highlight them a bit
-  - Customize spacing to tweak how it takes up space in the margin
-  - Customize font size, line height, text alignment, and color
-
-### Goal Features
-
-- [ ] Optional background color to sidenotes
-- [x] Command: Re-sequence footnote numbers. They have a habit of getting out of order once you insert new ones. ✅ 2026-02-27
-- [x] Option to have non-numbered sidenotes - aka "margin notes" ✅ 2026-02-26
-- [x] Add scaling option for margin note icon in text and in margin ✅ 2026-03-02
-- [x] Option for hidden margin notes: ✅ 2026-03-02
-  - ![:information_source:|30](https://forum.obsidian.md/images/emoji/apple/information_source.png?v=15 ":information_source:") (U+2139), 🛈 (U+1F6C8), 🛈 (U+1F6C8), 🗩 (U+1F5E9), 🗪 (U+1F5EA)
-  - 𝚤 (U+1D6A4) - best 1
-  - ⓘ (U+24D8) - best 2
-  - Ⓘ (U+24BE)
-  - 🄸 (U+1F138)
-
-### Maybe Features
-
-- [ ] Badge style for margin notes
-- [ ] Option for Sidenotes on both left and right margins (may only work with HTML, seems unlikely to allow coding like this with Markdown footnotes)
-- [ ] Option for style templates for multiple sidenotes types - e.g. one type has a background color, another does not.
-- [ ] Highlight the referencing _sentence_ in the main note text when hovering over a sidenote
-- [ ] Command: Switch between Footnotes visible <-> Sidenotes visible
-
-## Alternatives and inspirations
-
-- [FelixHT's Obsidian Sidenotes Plugin](https://github.com/FelixHT/obsidian_side_notes) - hasn't been updated in a while - one user reported it doesn't fully function any longer but I haven't tested it. I did build some of the functionality in my plugin based on this.
-- [SideNote Plugin](https://github.com/mofukuru/SideNote) allows you to add comments to a piece of text, and this is viewable in the side panel.
-- [Cornell Notes Learning Vault](https://github.com/TfTHacker/cornell-notes-learning-vault) from TfTHacker
-- [crnkv/obsidian-sidenote-auto-adjust-module](https://github.com/crnkv/obsidian-sidenote-auto-adjust-module) ([forum post](https://forum.obsidian.md/t/css-snippet-sidenote-auto-adjust-module-four-styles-available/94495))
-- [Collapsible Sidenotes using a CSS trick](https://forum.obsidian.md/t/meta-post-common-css-hacks/1978/341)
-- [Sidenotes Using CSS also](https://scripter.co/sidenotes-using-only-css/)
-- [A sidenote solution similar to Tufte CSS](https://www.kooslooijesteijn.net/blog/sidenotes-without-js)
-- [Obsidian-sidenote-callout](https://github.com/xhuajin/obsidian-sidenote-callout/blob/main/README.md) - I did not use a custom callout like this because I wanted the sidenotes to also be publishable.
-- [Tufte style sidenotes](https://medium.com/obsidian-observer/tufte-style-sidenotes-in-obsidian-89b0a785bc54)
-- [Collapsible inline notes and sidenotes](https://forum.obsidian.md/t/collapsible-inline-notes-and-sidenotes/31909)
-
-## Setup
-
-1. If copying manually from this repo, download the plugin from [the Releases page](https://github.com/cparsell/sidenotes/releases).
-2. Add the plugin files to your Obsidian vault.
-   Copy the contents into `YOUR-VAULT/.obsidian/plugins/sidenotes`.
-3. If copying manually, restart Obsidian and then enable the plugin in **Settings**.
-4. **Configure the settings** how you like:
-   - Choose **sidenote format**:
-     - **Footnotes**: Traditional Markdown footnotes will become sidenotes
-       - **Hide footnotes:** Choose if you want to hide the origina footnotes at the bottom of the note
-       - **Hide footnote numbers:** Hide the original Markdown reference numbers in the note text - e.g. this: `[1]`
-     - **HTML**: uses `<span>` elements to format the sidenotes. I originally designed using this because it was an easy way for me to set up CSS styles in Obsidian as well as CSS styles in my web-published notes
-   - **Number style**: Try 'neumorphic badge' for numbers that are more visually identifiable
-   - **Width & Spacing**:
-     - Minimum sidenote width
-     - Maximum sidenote width
-     - Minimum gap between sidenote and text
-     - Minimum gap between sidenote and editor edge
-   - **Page offset factor**: Make some room for the sidenotes if you want. This shifts the note text over (only affects notes that have sidenotes)
-
-## Use
-
-Run the command `Insert Sidenote`.
-
-### **If using HTML**
-
-It will insert this:
+Sidenotes are written as HTML spans directly in your Markdown:
 
 ```html
-<span class="sidenote">{cursor}</span>
+This is a sentence.<span class="sidenote">This appears in the margin.</span>
 ```
 
-Click on the sidenote to edit it in the margin. Press `ENTER` to update. Press `SHIFT+ENTER` to add a new line in the sidenote.
+To force a specific side:
 
-### **If using footnotes**
+```html
+<span class="sidenote sidenote-left">Always in the left margin.</span>
+<span class="sidenote sidenote-right">Always in the right margin.</span>
+```
 
-it will insert `[^1]` and add a footnote at the bottom of the document. Press `ENTER` to update. Using `SHIFT+ENTER` will not work to add a new line in a footnote because of how footnotes are formatted in Markdown.
+### Commands
 
-## Web Publishing
+| Command                | Inserts                                        |
+| ---------------------- | ---------------------------------------------- |
+| `Insert sidenote`      | `<span class="sidenote"></span>`               |
+| `Insert left sidenote` | `<span class="sidenote sidenote-left"></span>` |
+| `Insert right sidenote`| `<span class="sidenote sidenote-right"></span>`|
 
-I use [Digital Garden](https://github.com/oleeskild/Obsidian-Digital-Garden) to publish a subset of my notes to a website. In the framework Digital Garden has set up, a CSS file called `custom-styles.css` is where one adds any CSS to modify the default styles.
+Each command places the cursor inside the span, or wraps the current selection if you have text selected.
 
-The snippet of CSS I've been using for web publishing is located in `/digital-garden/custom-styles.css`.
+### Editing
 
-### Known issues
+Click a sidenote in the margin to edit it. Press `ENTER` to save, `SHIFT+ENTER` for a new line, `ESC` to cancel. To edit sidenotes in Reading mode, enable **Allow Sidenote Edits in reading mode** in settings.
 
-- HTML sidenotes, in Reading Mode? - When pressing enter to update the last sidenote, it jumps up about 1 page
-- Changing style settings causes Editing mode sidenotes to disappear until restart
-- ~~Footnotes, Reading Mode - Editing mode box will overlap over a sidenote just below it~~
-- ~~Footnotes, when converted to sidenotes, collide and/or are not positioned properly in the sidenote column.~~ (Tentatively fixed 2/3/26)
-- ~~Sidenotes seem to collide with each other in certain circumstances. So far I just see it in Reading Mode.~~ (Fixed 2/2/26)
-- ~~Numbers may not update immediately when sequencing changes. For example, if the first sidenote is removed, the second one becomes the first but may still be annotated 2. Reopening the note fixes it~~ (Fixed 1/30/26)
-- ~~The cursor is brought to the top of the note after editing in the margin, if one edits/deletes the content in the note.~~ (Fixed 1/31/26)
-- ~~When editing sidenotes in the margin, after pressing enter, the wrong sidenote may get updated if two sidenotes have the same text~~ (Fixed 1/31/26).
-- ~~Also when editing sidenotes in the margins, especially lower down in a note, the numbers may reset. e.g. instead of being 5,6 and 7, they become 1, 2, and 3~~ (Fixed 1/31/26).
+### Per-Note Styling
+
+Each sidenote can have its own background color, text color, font size, and font family.
+
+**Via the style modal (Live Preview and Reading mode):**
+
+Hover over a sidenote margin box and a gear icon appears. Click it to open the style editor:
+- The note preview and config panel sit side-by-side, mirrored to match your note's margin side (left notes show preview on the left, right notes on the right).
+- Adjust background, text color, font size, and font family. Changes live-update the preview and the note itself.
+- **Save** commits the styles to your document; **Cancel** reverts.
+
+**By hand (source mode):**
+
+Styles are stored as a plain `style` attribute on the sidenote span, so you can edit them directly in source:
+
+```html
+<span class="sidenote" style="background: #fdd; color: #333; font-size: 14px; font-family: Georgia">Styled note</span>
+```
+
+Supported CSS properties: `background`, `background-color`, `color`, `font-size`, `font-family`, and any other properties except layout-breaking ones (`position`, `width`, `transform`, `z-index`, etc., which the plugin filters out to preserve the margin layout).
+
+## Settings
+
+- **Display** — left or right margin, show/hide numbers, number style (Arabic, Roman, letters), badge style (plain, neumorphic, pill), number color.
+- **Width & spacing** — min/max sidenote width, gaps between text, sidenote, and editor edge, anchor mode (text or editor edge), page offset.
+- **Breakpoints** — window widths at which sidenotes switch to compact mode or hide.
+- **Typography** — font size (normal and compact), line height, text color, hover color, alignment.
+- **Behavior** — collision spacing, transitions, per-heading numbering reset, Reading-mode editing, PDF export.
+
+## Installation
+
+### Manual
+
+1. Download `main.js`, `manifest.json`, and `styles.css` from the latest release (or build from source, below).
+2. Copy them into `YOUR-VAULT/.obsidian/plugins/marginalia/`.
+3. Restart Obsidian and enable **Marginalia** in **Settings → Community plugins**.
+
+### Building from source
+
+```bash
+npm install
+npm run build
+```
+
+This produces `main.js` at the repository root. Copy it together with `manifest.json` and `styles.css` into the plugin folder as above.
+
+## Known issues and limitations
+
+- Reading mode: committing an edit to the last sidenote can scroll the view up.
+- Changing style settings can cause Editing-mode sidenotes to disappear until restart.
+- Per-note styling: if two sidenotes contain byte-identical text, the style editor targets the first occurrence in the file (same limitation as text editing).
+
+## Credits
+
+- Forked from [cparsell/sidenotes](https://github.com/cparsell/sidenotes).
+- Sidenote conventions from [Edward Tufte](https://edwardtufte.github.io/tufte-css/) and [Gwern.net](https://gwern.net/sidenote).
 
 ## AI disclaimer
 
-Large Language Models (LLM) were used in the production and editing of this code. I'll do my best not to keep it from being slop.
+Large Language Models (LLMs) were used in the production and editing of this code.

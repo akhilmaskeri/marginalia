@@ -1,10 +1,10 @@
 {
-	"id": "sidenotes",
-	"name": "Sidenotes",
+	"id": "marginalia",
+	"name": "Marginalia",
 	"version": "0.3.7",
 	"minAppVersion": "1.10.0",
 	"description": "Adds ability to create sidenotes in Obsidian with incrementing numbers.",
-	"author": "cparsell",
-	"authorUrl": "https://github.com/cparsell/sidenotes/",
+	"author": "amaskeri",
+	"authorUrl": "",
 	"isDesktopOnly": false
 }

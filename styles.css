@@ -120,11 +120,7 @@
 /* LEFT */
 .markdown-source-view.mod-cm6[data-sidenote-position="left"]
 	.sidenote-margin,
-.markdown-reading-view[data-sidenote-position="left"] .sidenote-margin,
-.markdown-source-view.mod-cm6[data-sidenote-position="left"]
-	.cm-line
-	.sidenote-number[data-footnote-id]
-	.sidenote-margin {
+.markdown-reading-view[data-sidenote-position="left"] .sidenote-margin {
 	left: calc(
 		var(
 				--sidenote-offset,
@@ -139,11 +135,7 @@
 /* RIGHT */
 .markdown-source-view.mod-cm6[data-sidenote-position="right"]
 	.sidenote-margin,
-.markdown-reading-view[data-sidenote-position="right"] .sidenote-margin,
-.markdown-source-view.mod-cm6[data-sidenote-position="right"]
-	.cm-line
-	.sidenote-number[data-footnote-id]
-	.sidenote-margin {
+.markdown-reading-view[data-sidenote-position="right"] .sidenote-margin {
 	right: calc(
 		var(
 				--sidenote-offset,
@@ -189,6 +181,33 @@
 			var(--sidenote-indent-adjust, 0px)
 	) !important;
 	left: auto !important;
+}
+
+/* When the forced side is OPPOSITE the global setting, --sidenote-offset was
+   computed for the other edge (edge-anchor math is side-specific), so ignore
+   it and use the text-anchor formula instead. */
+.markdown-source-view.mod-cm6[data-sidenote-position="right"]
+	.sidenote-number[data-sidenote-side="left"]
+	.sidenote-margin,
+.markdown-reading-view[data-sidenote-position="right"]
+	.sidenote-number[data-sidenote-side="left"]
+	.sidenote-margin {
+	left: calc(
+		-1 * (var(--sidenote-width) + var(--sidenote-gap)) -
+			var(--sidenote-indent-adjust, 0px)
+	) !important;
+}
+
+.markdown-source-view.mod-cm6[data-sidenote-position="left"]
+	.sidenote-number[data-sidenote-side="right"]
+	.sidenote-margin,
+.markdown-reading-view[data-sidenote-position="left"]
+	.sidenote-number[data-sidenote-side="right"]
+	.sidenote-margin {
+	right: calc(
+		-1 * (var(--sidenote-width) + var(--sidenote-gap)) +
+			var(--sidenote-indent-adjust, 0px)
+	) !important;
 }
 
 /* === Prevent clipping by CM layers === */
@@ -393,10 +412,6 @@
 	border-radius: 3px;
 }
 
-.sidenote-fn-link-hidden {
-	display: none;
-}
-
 /* ==========================================================
    Number Badge Styles
    Selected via [data-sn-badge-style] on <html>
@@ -451,7 +466,7 @@
 	--sn-badge-hover-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-[data-sn-badge-style="neumorphic"]
+[data-sn-show-numbers="true"][data-sn-badge-style="neumorphic"]
 	.sidenote-margin[data-sidenote-num]::before {
 	content: attr(data-sidenote-num) !important;
 	display: inline-flex !important;
@@ -480,6 +495,11 @@
 	background-color: var(--sn-active-bg) !important;
 	color: var(--text-accent) !important;
 	box-shadow: var(--sn-badge-hover-shadow);
+}
+
+[data-sn-show-numbers="false"] .sidenote-margin[data-sidenote-num]::before,
+[data-sn-show-numbers="false"] .sidenote-number::after {
+	content: none !important;
 }
 
 [data-sn-badge-style="neumorphic"] .sidenote-number::after {
@@ -526,7 +546,8 @@
 	--sn-pill-hover-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-[data-sn-badge-style="pill"] .sidenote-margin[data-sidenote-num]::before {
+[data-sn-show-numbers="true"][data-sn-badge-style="pill"]
+	.sidenote-margin[data-sidenote-num]::before {
 	content: attr(data-sidenote-num) !important;
 	display: inline-flex !important;
 	align-items: center;
@@ -587,68 +608,7 @@
 }
 
 /* ==========================================================
-   Footnote-edit mode: hide definitions & reference numbers
-   Driven by [data-sn-format], [data-sn-hide-footnotes],
-   [data-sn-hide-footnote-numbers] on <html>
-   ========================================================== */
-
-/* Hide footnote definitions in Live Preview */
-[data-sn-format="footnote-edit"][data-sn-hide-footnotes="true"]
-	.markdown-source-view.mod-cm6.is-live-preview[data-has-sidenotes="true"][data-sidenote-mode="normal"]
-	.cm-line.HyperMD-footnote,
-[data-sn-format="footnote-edit"][data-sn-hide-footnotes="true"]
-	.markdown-source-view.mod-cm6.is-live-preview[data-has-sidenotes="true"][data-sidenote-mode="compact"]
-	.cm-line.HyperMD-footnote,
-[data-sn-format="footnote-edit"][data-sn-hide-footnotes="true"]
-	.markdown-source-view.mod-cm6.is-live-preview[data-has-sidenotes="true"][data-sidenote-mode="full"]
-	.cm-line.HyperMD-footnote {
-	display: none;
-}
-
-/* Hide footnote link inside sidenote wrapper in reading mode */
-[data-sn-hide-footnote-numbers="true"]
-	.sidenote-number[data-footnote-id]
-	a.footnote-link {
-	display: none;
-}
-
-/* Hide original [^1] reference numbers in Live Preview */
-[data-sn-format="footnote-edit"][data-sn-hide-footnote-numbers="true"]
-	.markdown-source-view.mod-cm6.is-live-preview
-	.cm-line:has(.sidenote-number[data-footnote-id])
-	.cm-footref {
-	display: none;
-}
-
-/* === CM6 footnote sidenote widget === */
-.cm-line .sidenote-number[data-footnote-id] {
-	position: static;
-	display: inline;
-}
-
-.cm-line:has(.sidenote-number[data-footnote-id]) {
-	position: relative;
-}
-
-.cm-line .sidenote-number[data-footnote-id] .sidenote-margin {
-	position: absolute;
-	top: 0;
-	width: var(--sidenote-width);
-	color: var(--sn-text-color, var(--text-normal));
-	font-size: var(--sn-font-size, 80%);
-	line-height: var(--sn-line-height, 1.35);
-	overflow-wrap: break-word;
-	transform: translateY(
-		calc(var(--sidenote-line-offset, 0px) + var(--sidenote-shift, 0px))
-	);
-	will-change: transform;
-	z-index: 10;
-	pointer-events: auto;
-	transition: var(--sn-transition, none);
-}
-
-/* ==========================================================
-   Sidenote inline CM6 editor (footnote-edit mode)
+   Sidenote inline CM6 editor
    ========================================================== */
 .sidenote-margin .sidenote-cm-editor.cm-editor {
 	background: transparent !important;
@@ -707,170 +667,103 @@
 	height: auto !important;
 }
 
-/* Margin notes: hide the number badge */
-.sidenote-number.margin-note::before {
-	display: none !important;
+/* ==================== Per-note styling ==================== */
+
+/* Neutralize inline styles on the hidden original span so a per-note
+   font-size/background can't inflate the hidden span's line box */
+.sidenote-number > span.sidenote {
+	font-size: inherit !important;
+	background: transparent !important;
+	padding: 0 !important;
 }
 
-.sidenote-number.margin-note::after {
-	display: none !important;
+/* Notes with a custom background get padding so it looks like a card */
+.sidenote-margin[data-sn-styled-bg="true"] {
+	padding: 0.35em 0.5em;
+	border-radius: 4px;
+	box-sizing: border-box;
 }
 
-/* Optionally: remove any badge padding/spacing for margin notes */
-small.sidenote-margin.margin-note {
-	/* No top offset for the badge */
+/* Style gear button — absolutely positioned so it adds no height and
+   collision measurements stay correct */
+.sidenote-style-gear {
+	position: absolute;
+	top: -0.4em;
+	right: -0.4em;
+	width: 1.5em;
+	height: 1.5em;
+	padding: 2px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	cursor: pointer;
+	opacity: 0;
+	transition: opacity 120ms ease;
+	z-index: 11;
+	box-shadow: none;
+	color: var(--text-muted);
 }
 
-.sidenote-margin.margin-note::before {
-	display: none !important;
-	content: none !important;
+.sidenote-style-gear svg {
+	width: 0.9em;
+	height: 0.9em;
 }
 
-/* Hide margin note entries from the footnotes section at the bottom */
-section.footnotes li:has(> p > a[data-footref^="mn-"]) {
+.sidenote-margin:hover .sidenote-style-gear {
+	opacity: 0.85;
+}
+
+.sidenote-style-gear:hover {
+	opacity: 1 !important;
+	color: var(--text-normal);
+}
+
+.sidenote-margin[data-editing="true"] .sidenote-style-gear {
 	display: none;
 }
 
-.margin-note-marker {
-	position: relative;
-	display: inline;
-	font-size: var(--sn-mn-marker-scale, 1em);
-	color: var(--text-muted);
-	cursor: pointer;
-	vertical-align: baseline;
-	height: 0;
-	line-height: 0.5 !important;
+/* Style modal: preview + config side by side, mirrored per note side */
+.sn-style-modal-body {
+	display: flex;
+	gap: 1.5em;
+	align-items: flex-start;
+	margin-bottom: 1em;
 }
 
-.sidenote-number.margin-note {
-	line-height: inherit !important;
-	display: inline !important;
+.sn-style-modal-body[data-side="left"] {
+	flex-direction: row;
 }
 
-.margin-note-marker:hover {
-	color: var(--text-normal) !important;
+.sn-style-modal-body[data-side="right"] {
+	flex-direction: row-reverse;
 }
 
-.margin-note-marker-img {
-	width: var(--sn-mn-marker-scale, 1em);
-	height: var(--sn-mn-marker-scale, 1em);
-	vertical-align: text-top;
-	display: inline-block;
-	cursor: pointer;
-	pointer-events: none;
+.sn-style-preview {
+	flex: 0 0 40%;
+	min-width: 0;
 }
 
-/* Hide badge styles for margin notes */
-[data-sn-badge-style="neumorphic"] .sidenote-number.margin-note::after {
-	display: none !important;
-}
-
-[data-sn-badge-style="neumorphic"]
-	.sidenote-margin.margin-note[data-sidenote-num]::before {
-	display: none !important;
-}
-
-[data-sn-badge-style="pill"]
-	.sidenote-margin.margin-note[data-sidenote-num]::before {
-	display: none !important;
-}
-
-[data-sn-badge-style="plain"] .sidenote-number.margin-note::after {
-	display: none !important;
-}
-
-/* ---- Margin note popup mode ---- */
-.margin-note-icon {
+.sn-style-preview-note {
 	display: block;
-	cursor: pointer;
-	font-size: var(--sn-mn-popup-scale, 1.5em);
-	font-weight: bold;
-	color: var(--text-accent) !important;
-	line-height: 0.5 !important;
-	transition: color 0.15s ease;
-	user-select: none;
-	text-align: center;
-}
-
-span.sidenote-number.margin-note {
-	line-height: 0 !important;
-	display: inline-block !important;
-	vertical-align: middle;
-}
-
-.margin-note-icon:hover {
-	color: var(--text-normal) !important;
-}
-
-.sidenote-margin.margin-note.popup-mode-margin {
-	overflow: visible !important;
-}
-
-.margin-note-popup {
-	position: absolute;
-	top: 1.8em;
-	left: 0;
-	z-index: var(--layer-popover);
-	width: calc(
-		var(--sn-base-width) + var(--sn-max-extra) * var(--sidenote-scale, 0.5)
-	);
-	max-width: calc(var(--sn-base-width) + var(--sn-max-extra));
-	min-width: var(--sn-base-width);
-	padding: 0.75rem 1rem;
-	background: inherit !important;
-	backdrop-filter: blur(16px) !important;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
 	font-size: var(--sn-font-size, 80%);
+	color: var(--sn-text-color, var(--text-normal));
 	line-height: var(--sn-line-height, 1.35);
-	color: var(--text-normal);
-	opacity: 0;
-	transform: translateY(-4px);
-	transition:
-		opacity 0.15s ease,
-		transform 0.15s ease;
-	pointer-events: none;
-}
-
-.margin-note-popup.is-visible {
-	transform: translateY(0);
-	pointer-events: auto;
-	opacity: 1 !important;
-}
-
-.margin-note-popup .margin-note-popup-close {
-	position: absolute;
-	top: 4px;
-	right: 6px;
-	cursor: pointer;
-	color: var(--text-muted);
-	font-size: 0.85em;
-	line-height: 1;
-	padding: 2px;
-}
-
-.margin-note-popup .margin-note-popup-close:hover {
-	color: var(--text-normal);
-}
-
-/* Margin note popup Editable content area */
-.margin-note-popup-content[contenteditable="true"] {
-	padding: 4px;
+	padding: 0.35em 0.5em;
+	border: 1px dashed var(--background-modifier-border);
 	border-radius: 4px;
-	min-width: 10rem;
+	min-height: 3em;
+	overflow-wrap: break-word;
 }
 
-.margin-note-popup-content[contenteditable="true"]:focus {
-	background: var(--background-secondary);
-	box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+.sn-style-config {
+	flex: 1 1 auto;
+	min-width: 0;
 }
 
-.margin-note-icon-img {
-	width: var(--sn-mn-popup-scale, 1.5em);
-	height: var(--sn-mn-popup-scale, 1.5em);
-	vertical-align: middle;
-	display: inline-block;
-	cursor: pointer;
-	pointer-events: none;
+.sn-style-config .setting-item {
+	border-top: none;
+	padding: 0.4em 0;
 }

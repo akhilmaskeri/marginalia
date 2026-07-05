@@ -5,11 +5,6 @@ import SidenotePlugin from "./main";
 
 // Settings interface
 export interface SidenoteSettings {
-	// Source format
-	sidenoteFormat: "html" | "footnote" | "footnote-edit";
-	hideFootnotes: boolean;
-	hideFootnoteNumbers: boolean;
-
 	// Display
 	sidenotePosition: "left" | "right";
 	showSidenoteNumbers: boolean;
@@ -45,21 +40,9 @@ export interface SidenoteSettings {
 	resetNumberingPerHeading: boolean;
 	editInReadingMode: boolean;
 	pdfExport: boolean;
-
-	// Margin note
-
-	marginNoteDisplay: "margin" | "popup";
-	popupIcon: string;
-	marginNoteScaleFactor: number;
-	popupIconScaleFactor: number;
 }
 
 export const DEFAULT_SETTINGS: SidenoteSettings = {
-	// Source format
-	sidenoteFormat: "html",
-	hideFootnotes: false,
-	hideFootnoteNumbers: true,
-
 	// Display
 	sidenotePosition: "left",
 	showSidenoteNumbers: true,
@@ -95,12 +78,6 @@ export const DEFAULT_SETTINGS: SidenoteSettings = {
 	resetNumberingPerHeading: false,
 	editInReadingMode: false,
 	pdfExport: false,
-
-	// Margin note
-	marginNoteDisplay: "margin",
-	popupIcon: "ⓘ",
-	marginNoteScaleFactor: 1,
-	popupIconScaleFactor: 1,
 };
 
 // ======================================================
@@ -118,59 +95,6 @@ export class SidenoteSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
-
-		new Setting(containerEl).setName("Sidenote Format").setHeading();
-
-		new Setting(containerEl)
-			.setName("Sidenote format")
-			.setDesc("Choose how sidenotes are written in your documents")
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOption(
-						"html",
-						'HTML spans: <span class="sidenote">text</span>',
-					)
-					//.addOption("footnote", "Footnotes (reading mode only)")
-					.addOption(
-						"footnote-edit",
-						"Footnotes (reading + editing mode) [experimental]",
-					)
-					.setValue(this.plugin.settings.sidenoteFormat)
-					.onChange(async (value: "html" | "footnote-edit") => {
-						this.plugin.settings.sidenoteFormat = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl).setName("If using Footnotes").setHeading();
-
-		new Setting(containerEl)
-			.setName("Hide footnotes")
-			.setDesc(
-				"Hides the footnotes at the bottom of the document (only relevant if using footnote format)",
-			)
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.hideFootnotes)
-					.onChange(async (value) => {
-						this.plugin.settings.hideFootnotes = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName("Hide footnote numbers in text")
-			.setDesc(
-				"Hides the Markdown style footnote reference numbers in the text body, and replaces with sidenote numbers only (only relevant if using footnote format)",
-			)
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.hideFootnoteNumbers)
-					.onChange(async (value) => {
-						this.plugin.settings.hideFootnoteNumbers = value;
-						await this.plugin.saveSettings();
-					}),
-			);
 
 		new Setting(containerEl).setName("Display").setHeading();
 
@@ -540,7 +464,7 @@ export class SidenoteSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Allow Sidenote Edits in reading mode")
 			.setDesc(
-				"Click a sidenote in Reading Mode to edit the footnote text",
+				"Click a sidenote in Reading Mode to edit the sidenote text",
 			)
 			.addToggle((toggle) =>
 				toggle
@@ -552,83 +476,15 @@ export class SidenoteSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName(
-				"Include sidenotes in PDF export (HTML only - experimental)",
-			)
+			.setName("Include sidenotes in PDF export (experimental)")
 			.setDesc(
-				"When enabled, sidenotes will be included in PDF exports. Note: this may cause formatting issues in some cases, and is not compatible with the Footnote format *yet*.",
+				"When enabled, sidenotes will be included in PDF exports. Note: this may cause formatting issues in some cases.",
 			)
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.pdfExport as boolean)
 					.onChange(async (value) => {
 						this.plugin.settings.pdfExport = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl).setName("Margin Notes").setHeading();
-		new Setting(containerEl)
-			.setName("Margin note display")
-			.setDesc(
-				"Show margin notes in the margin, or as an ⓘ icon with a popup on click.",
-			)
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOption("margin", "Show in margin")
-					.addOption("popup", "Show as popup on click")
-					.setValue(this.plugin.settings.marginNoteDisplay)
-					.onChange(async (value) => {
-						this.plugin.settings.marginNoteDisplay = value as
-							| "margin"
-							| "popup";
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName("Margin note popup icon")
-			.setDesc(
-				"Specify an icon to use for margin notes when 'Show as popup on click' is selected. You can use any Unicode character, e.g. ⓘ or 🛈, or a filename (stored in plugins/sidenotes/assets)",
-			)
-			.addText((text) =>
-				text
-					.setPlaceholder("e.g. ⓘ or 🛈 or information_source.png")
-					.setValue(this.plugin.settings.popupIcon)
-					.onChange(async (value) => {
-						this.plugin.settings.popupIcon = value.trim();
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName("Margin note marker scale factor")
-			.setDesc(
-				"Scale factor for margin note icon placed in the main note (default: 1)",
-			)
-			.addSlider((slider) =>
-				slider
-					.setLimits(0.1, 3, 0.1)
-					.setValue(this.plugin.settings.marginNoteScaleFactor)
-					.setDynamicTooltip()
-					.onChange(async (value) => {
-						this.plugin.settings.marginNoteScaleFactor = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName("Margin note popup icon scale factor")
-			.setDesc(
-				"Scale factor for margin note popup icons - Only applies if using popup mode for margin notes(default: 1)",
-			)
-			.addSlider((slider) =>
-				slider
-					.setLimits(0.1, 3, 0.1)
-					.setValue(this.plugin.settings.popupIconScaleFactor)
-					.setDynamicTooltip()
-					.onChange(async (value) => {
-						this.plugin.settings.popupIconScaleFactor = value;
 						await this.plugin.saveSettings();
 					}),
 			);
