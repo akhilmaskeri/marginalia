@@ -7,6 +7,7 @@ import {
 	EditorPosition,
 	Menu,
 	Editor,
+	Notice,
 	setIcon,
 } from "obsidian";
 import {
@@ -1278,6 +1279,26 @@ export default class SidenotePlugin extends Plugin {
 				};
 			}
 		}
+
+		// Last resort: compare with ALL whitespace (including newlines)
+		// collapsed — the DOM copy of a multi-line note may not preserve
+		// the source's exact line breaks.
+		const flattened = normalized.replace(/\s+/g, " ");
+		const regex3 = SIDENOTE_SPAN_REGEX();
+		while ((match = regex3.exec(content)) !== null) {
+			const candidate = this.normalizeText(match[1] ?? "").replace(
+				/\s+/g,
+				" ",
+			);
+			if (candidate === flattened) {
+				return {
+					text: match[1] ?? "",
+					fullMatch: match[0],
+					index: match.index,
+					openingTag: match[0].substring(0, match[0].indexOf(">") + 1),
+				};
+			}
+		}
 		return null;
 	}
 
@@ -1790,6 +1811,7 @@ export default class SidenotePlugin extends Plugin {
 			margin.appendChild(
 				this.renderLinksToFragment(this.normalizeText(renderText)),
 			);
+			margin.dataset.sidenoteRawText = renderText;
 			this.attachStyleGear(margin);
 
 			if (this.settings.editInReadingMode) {
@@ -2640,6 +2662,10 @@ export default class SidenotePlugin extends Plugin {
 					const raw = this.normalizeText(item.el.textContent ?? "");
 					margin.appendChild(this.renderLinksToFragment(raw));
 
+					// Keep the raw (unrendered) text for source lookups —
+					// margin.textContent loses markdown markers and <br>s.
+					margin.dataset.sidenoteRawText = raw;
+
 					applyStyleToMargin(margin, item.el.getAttribute("style"));
 					this.attachStyleGear(margin);
 
@@ -2924,10 +2950,18 @@ export default class SidenotePlugin extends Plugin {
 			e.preventDefault();
 			e.stopPropagation();
 
-			// Gear icon opens the per-note style modal instead of editing
+			// Gear icon opens the per-note style modal instead of editing.
+			// Use the stored raw text — margin.textContent is rendered
+			// content (no markdown markers, <br> instead of newlines) and
+			// won't match the source for formatted or multi-line notes.
 			const target = e.target as HTMLElement | null;
 			if (target?.closest(".sidenote-style-gear")) {
-				this.openStyleModal(margin, margin.textContent ?? "");
+				const rawText =
+					margin.dataset.sidenoteRawText ||
+					this.normalizeText(sourceSpan.textContent ?? "") ||
+					margin.textContent ||
+					"";
+				this.openStyleModal(margin, rawText);
 				return;
 			}
 
@@ -2992,6 +3026,7 @@ export default class SidenotePlugin extends Plugin {
 			margin.appendChild(
 				this.renderLinksToFragment(this.normalizeText(renderText)),
 			);
+			margin.dataset.sidenoteRawText = this.normalizeText(renderText);
 			this.attachStyleGear(margin);
 		};
 
@@ -3150,9 +3185,13 @@ export default class SidenotePlugin extends Plugin {
 	 * note's source text, used to locate the span in the document.
 	 */
 	private openStyleModal(margin: HTMLElement, rawText: string) {
-		if (!rawText) return;
-		const found = this.findHtmlSidenoteInSource(rawText);
-		if (!found) return;
+		const found = rawText
+			? this.findHtmlSidenoteInSource(rawText)
+			: null;
+		if (!found) {
+			new Notice("Could not locate this sidenote in the document.");
+			return;
+		}
 
 		const currentStyle = extractStyleFromOpeningTag(found.openingTag);
 		const side =
